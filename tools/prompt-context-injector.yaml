@@ -1,6 +1,5 @@
 name: prompt-context-injector
 description: Synthesizes recalled memory assertions into structured context containers constrained by token budgets.
-version: 1.0.0
 parameters:
   type: object
   properties:
@@ -18,21 +17,15 @@ parameters:
       description: Array of recalled memory facts to inject.
     max_token_budget:
       type: integer
-      description: Upper bound on tokens allocated for injected memory blocks.
       default: 1294
+      description: Upper bound on tokens allocated for injected memory blocks.
     format_style:
       type: string
-      enum: [xml, markdown, plain]
+      enum:
+        - xml
+        - markdown
+        - plain
       default: xml
+      description: Enclosure formatting style for prompt injection.
   required:
     - facts
-returns:
-  type: object
-  properties:
-    formatted_context:
-      type: string
-      description: The sanitized, fenced context block ready for system prompt injection.
-    tokens_consumed:
-      type: integer
-    injected_count:
-      type: integer

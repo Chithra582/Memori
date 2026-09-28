@@ -1,8 +1,6 @@
 ---
 name: context-injection-synthesizer
 description: Dynamically format, budget, and inject recalled memories into host agent prompts within strict token limits.
-version: 1.0.0
-category: Developer Tools
 ---
 
 # Context Injection Synthesizer

@@ -1,8 +1,6 @@
 ---
 name: datastore-persistence-bridge
 description: Manage atomic multi-datastore persistence, schema migrations, and asynchronous background replication across cloud and BYODB storage engines.
-version: 1.0.0
-category: Developer Tools
 ---
 
 # Datastore Persistence Bridge

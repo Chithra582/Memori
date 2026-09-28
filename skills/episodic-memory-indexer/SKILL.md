@@ -1,8 +1,6 @@
 ---
 name: episodic-memory-indexer
 description: Parse dialogue events into structured episodic memory items, sanitizing noise and extracting durable assertions.
-version: 1.0.0
-category: Developer Tools
 ---
 
 # Episodic Memory Indexer

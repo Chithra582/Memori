@@ -1,8 +1,6 @@
 ---
 name: semantic-recall-orchestrator
 description: Execute dual-stage hybrid retrieval across dense vector indices and lexical keyword stores with recency decay scoring.
-version: 1.0.0
-category: Developer Tools
 ---
 
 # Semantic Recall Orchestrator

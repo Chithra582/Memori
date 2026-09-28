@@ -1,6 +1,5 @@
 name: memory-fact-extractor
 description: Extracts durable factual assertions, user preferences, and constraints from conversation text while redacting sensitive PII.
-version: 1.0.0
 parameters:
   type: object
   properties:
@@ -15,27 +14,9 @@ parameters:
       description: Identifier for the calling agent or process.
     redact_pii:
       type: boolean
-      description: Whether to sanitize PII before extraction.
       default: true
+      description: Whether to sanitize PII before extraction.
   required:
     - text
     - entity_id
     - process_id
-returns:
-  type: object
-  properties:
-    extracted_facts:
-      type: array
-      items:
-        type: object
-        properties:
-          category:
-            type: string
-            enum: [fact, preference, constraint, rule, relationship, event]
-          content:
-            type: string
-          confidence:
-            type: number
-    status:
-      type: string
-      enum: [success, filtered, error]

@@ -1,6 +1,5 @@
 name: vector-similarity-search
 description: Performs sub-millisecond dense vector similarity search across partitioned tenant memory namespaces.
-version: 1.0.0
 parameters:
   type: object
   properties:
@@ -14,32 +13,12 @@ parameters:
       description: Strict tenant namespace identifier.
     top_k:
       type: integer
-      description: Maximum number of candidate memory matches to retrieve.
       default: 10
+      description: Maximum number of candidate memory matches to retrieve.
     min_similarity:
       type: number
-      description: Minimum cosine similarity threshold for admission.
       default: 0.78
+      description: Minimum cosine similarity threshold for admission.
   required:
     - query_vector
     - entity_id
-returns:
-  type: object
-  properties:
-    matches:
-      type: array
-      items:
-        type: object
-        properties:
-          memory_id:
-            type: string
-          fact:
-            type: string
-          category:
-            type: string
-          score:
-            type: number
-          created_at:
-            type: string
-    count:
-      type: integer
