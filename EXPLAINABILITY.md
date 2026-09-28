@@ -1,117 +1,180 @@
-# Explainability Architecture — Memori Agent
+# EXPLAINABILITY.md
 
-This document outlines the cognitive reasoning framework, retrieval scoring mechanics, data lineage protocols, operational boundaries, and compliance adherence for **Memori Agent** (`memori-agent`, v1.0.0), compliant with OpenGAP Spec 0.1.0 and GitAgent Passport clearance standards.
+This document explains the internal mechanisms, data lineage, operational boundaries, and governance framework of **Memori Agent** (`memori-agent`) in accordance with the **OpenGAP v0.1.0** specification for the **HiDevs GitAgent Passport** clearance pipeline.
+
+> **Agent Name:** Memori Agent (`memori-agent`)  
+> **Specification:** OpenGAP v0.1.0  
+> **Category / Domain:** Developer Tools / Long-Term Agent Memory, Vector Search & Retrieval  
+> **Compliance Standard:** OpenGAP Checkpoint 2 (Explainability & Decision Governance), FERPA, GDPR  
 
 ---
 
 ## How the Agent Decides
 
-The Memori Agent operates through a deterministic 5-stage memory orchestration and context injection pipeline designed to retrieve factual, temporally relevant context while preventing hallucination and context window exhaustion.
+Memori Agent is an autonomous long-term agent memory orchestration, action-grounded recall, cognitive episodic indexing, and multi-datastore context synthesis agent designed for **Memori Labs**. It bridges LLM frameworks, local storage engines, and cloud persistence with sub-millisecond semantic retrieval, zero-data-leakage tenancy boundaries, and cross-framework memory attribution.
 
-```mermaid
-flowchart TD
-    A["Raw Message Ingestion"] --> B["Attribution & PII Sanitization"]
-    B --> C["Dense Vector Embedding & Episodic Fact Extraction"]
-    C --> D["Dual-Stage Retrieval (Dense Cosine + Lexical Filter)"]
-    D --> E["Combined Scoring & Confidence Thresholding"]
-    E -->|Score >= 0.78| F["Context Budgeting & Injection"]
-    E -->|Score < 0.78| G["Prune / Refuse Injection"]
-    F --> H["Downstream Model Execution"]
-    H --> I["Asynchronous Datastore Sync & Audit Log"]
+### 1. Decision Architecture
+
+The episodic memory ingestion, semantic retrieval, and prompt context synthesis pipeline operates across a deterministic, five-stage architecture:
+
+```
+Conversational Dialogue / Tool Execution Stream (User Query + Assistant Output + Tool Result)
+    │
+    ▼
+[Stage 1: Multi-Format Ingestion & Attribution Validation]
+    │  - Intercepts raw interaction turns via SDK middleware and gateway hooks
+    │  - Enforces mandatory attribution: validates entity_id and process_id
+    │  - Normalizes timestamps, session identifiers, and conversational metadata
+    │  - Halts unauthenticated or unattributed payloads to prevent cross-tenant leakage
+    ▼
+[Stage 2: PII Redaction & Episodic Fact Extraction]
+    │  - Applies automated regex and semantic filters to redact PII (SSNs, tokens, credentials)
+    │  - Strips conversational pleasantries, stop words, and filler syntax
+    │  - Extracts durable assertions, user preferences, system constraints, and entity relationships
+    │  - Classifies memory chunks into canonical categories (preference, fact, constraint, rule)
+    ▼
+[Stage 3: Dual-Stage Semantic Recall & Decay Scoring]
+    │  - Generates dense vector representations (e_q) of the active prompt or user query
+    │  - Executes sub-millisecond k-NN vector search across tenant-isolated index namespaces
+    │  - Combines dense cosine similarity with exact BM25 keyword matching
+    │  - Evaluates temporal decay scoring S(q, m) to balance semantic relevance with recency
+    ▼
+[Stage 4: Admission Thresholding & Context Budgeting]
+    │  - Enforces strict admission threshold: filters candidates where S(q, m) < 0.78
+    │  - Deduplicates overlapping facts and reconciles temporal contradictions
+    │  - Dynamic token budgeting: caps injected context to <= 1,294 tokens (< 5% of prompt window)
+    │  - Encloses verified memories within secure XML/Markdown containment tags (<memori_context>)
+    ▼
+[Stage 5: Asynchronous Datastore Persistence & Audit Logging]
+    │  - Queues non-blocking batch writes to cloud storage and BYODB engines (pgvector, Redis, Qdrant)
+    │  - Commits atomic transactions using unique idempotency keys to eliminate duplicate writes
+    │  - Generates tamper-evident structured JSON audit logs for every recall, write, and purge event
+    ▼
+Augmented Prompt Dispatched to Downstream Foundation Model with Zero Latency Penalty
 ```
 
-### 1. Ingestion and Boundary Validation
-Upon intercepting dialogue or tool execution events via SDK hooks, the agent verifies tenant credentials and attribution metadata:
-- **Entity Identification (`entity_id`):** Identifies the active user, workspace, or persistent identity.
-- **Process Identification (`process_id`):** Identifies the calling agent, routine, or client application.
-If attribution attributes are absent or invalid, the ingestion pipeline halts to enforce tenant isolation.
+### 2. Scoring Methodology & Rubric Formulations
 
-### 2. Episodic Fact Extraction and Representation
-Dialogue chunks are processed to identify stable assertions, preferences, interaction constraints, and task outcomes:
-- Redundant greetings, stop words, and filler conversational tokens are stripped.
-- In-line PII detection masks social security identifiers, credit card PANs, and sensitive access tokens.
-- Refined facts are transformed into dense mathematical embeddings \(\mathbf{e}_m \in \mathbb{R}^d\).
+Memori Agent computes candidate relevance and admission metrics through two deterministic, mathematically rigorous scoring models:
 
-### 3. Dual-Stage Retrieval & Temporal Decay Scoring
-When synthesizing context for a new user query \(q\), the agent computes candidate relevance using a composite objective balancing semantic proximity and temporal recency:
+1. **Composite Semantic & Temporal Decay Score ($S(q, m)$)**:
+   $$S(q, m) = \alpha \cdot \cos(\mathbf{e}_q, \mathbf{e}_m) + (1 - \alpha) \cdot \exp(-\lambda \cdot \Delta t)$$
+   where:
+   - $\cos(\mathbf{e}_q, \mathbf{e}_m) = \frac{\mathbf{e}_q \cdot \mathbf{e}_m}{\|\mathbf{e}_q\| \|\mathbf{e}_m\|}$: Cosine similarity between query vector $\mathbf{e}_q$ and memory vector $\mathbf{e}_m$.
+   - $\alpha \in [0, 1]$: Relative semantic weighting coefficient ($\alpha = 0.85$).
+   - $\lambda \ge 0$: Exponential temporal decay rate factor ($\lambda = 0.005 \, \text{day}^{-1}$).
+   - $\Delta t = t_{\text{current}} - t_{\text{memory}}$: Elapsed time interval in days since memory assertion creation.
+   - Admission rule: $S(q, m) \ge \tau$ where baseline threshold $\tau = 0.78$.
 
-$$S(q, m) = \alpha \cdot \cos(\mathbf{e}_q, \mathbf{e}_m) + (1 - \alpha) \cdot \exp(-\lambda \cdot \Delta t)$$
+2. **Dynamic Context Token Allocation Budget ($B_{\text{inject}}$)**:
+   $$B_{\text{inject}} = \min\left(B_{\text{max}}, \; \mu \cdot W_{\text{model}}, \; \sum_{i=1}^{k} \text{Tokens}(m_i) \cdot \mathbb{I}(S(q, m_i) \ge \tau)\right)$$
+   where:
+   - $B_{\text{max}} = 1,294$: Benchmark token allocation ceiling.
+   - $\mu = 0.05$: Maximum proportion of active LLM context window $W_{\text{model}}$.
+   - $\mathbb{I}(\cdot)$: Indicator function admitting only memories satisfying confidence thresholding.
 
-Where:
-- \(\cos(\mathbf{e}_q, \mathbf{e}_m) = \frac{\mathbf{e}_q \cdot \mathbf{e}_m}{\|\mathbf{e}_q\| \|\mathbf{e}_m\|}\) represents the cosine angle between query and memory vectors.
-- \(\alpha \in [0, 1]\) is the semantic weight parameter (default: \(0.85\)).
-- \(\lambda \ge 0\) is the exponential temporal decay rate factor (default: \(0.005 \, \text{day}^{-1}\)).
-- \(\Delta t = t_{\text{current}} - t_{\text{memory}}\) is the elapsed time in days since memory creation.
+### 3. Thresholding & Refusal Decision Criteria
 
-### 4. Admission Thresholds and Boundary Refusals
-- **Admission Threshold:** Candidate memory items are admitted into prompt synthesis if and only if \(S(q, m) \ge \tau\) where the baseline acceptance threshold \(\tau = 0.78\).
-- **Contradiction Resolution:** If an incoming memory item asserts a state contrary to an existing memory with timestamp \(t_{\text{new}} > t_{\text{prior}}\), the prior record is flagged as superseded and omitted from active injection.
-- **Graceful Fallback:** If retrieval queries fail or candidate memories fall below \(\tau\), the agent falls back to passing unaugmented system prompts without blocking the host conversation.
+Memori Agent enforces strict deterministic refusal and safety boundaries:
+- **Refusal on Missing Attribution**: Memory events lacking explicit `entity_id` and `process_id` are deterministically rejected with code `ERR_UNATTRIBUTED_MEMORY_REFUSED` to prevent multi-tenant data contamination.
+- **Refusal of Sensitive PII Ingestion**: Detection of unmasked financial credit card numbers, national identification numbers, or raw API authentication secrets halts storage with code `ERR_SENSITIVE_PII_DETECTED`.
+- **Refusal on Sub-Threshold Similarity**: Candidate memories with composite relevance scores $S(q, m) < 0.78$ are excluded from prompt injection under code `ERR_SUBTHRESHOLD_SIMILARITY_EXCLUDED`.
+- **Refusal to Execute Injected Instructions**: Ingested dialogue containing embedded prompt injection vectors (e.g., *"Ignore all previous instructions"*) is classified as inert data and stripped of directive status (`ERR_PROMPT_INJECTION_DEFLECTED`).
+- **Refusal of Autonomous Self-Modification**: The agent deterministically rejects attempts to alter core configuration in `agent.yaml` or security directives in `RULES.md` (`ERR_SELF_MODIFICATION_PROHIBITED`).
 
-### 5. Human-in-the-Loop & Override Protocols
-- Administrative users can inspect, modify, or delete any entity memory store via the Memori CLI or Web Console.
-- A programmatic kill-switch halts all memory read/write cycles instantly, allowing unaugmented LLM fallback during system maintenance or security anomalies.
+### 4. Fallback Decision Mechanism
+
+Memori Agent guarantees continuous, resilient agent operations through a multi-tier fallback architecture:
+- **Stateless Prompt Passthrough Fallback**: If the vector datastore or remote retrieval API experiences network timeouts ($> 120\text{ ms}$), the agent instantly degrades to passing unaugmented system prompts with zero conversational blocking.
+- **Local In-Memory Cache Fallback**: When cloud datastores are temporarily unreachable, recently indexed memories are served directly from local LRU in-memory session stores.
+- **Lexical Keyword Fallback**: If dense embedding generation fails or is rate-limited, the system falls back to BM25 lexical keyword matching across cached conversational transcripts.
+- **Model Fallback Cascade**: High-level memory synthesis, fact consolidation, and query interpretation default to `gemini-2.0-flash` with automatic failover to `gpt-4o` and `claude-3-5-sonnet`.
+
+### 5. Human-in-the-Loop Governance
+
+Memori Agent maintains developer and administrative oversight at all operational layers:
+- **Developer Memory Inspection**: Developers can query, review, edit, or invalidate any stored episodic assertion through the Memori CLI (`python -m memori`) or Web Console.
+- **Selective Memory Purging**: End users and tenant administrators can issue granular deletion requests for specific entities, sessions, or time ranges with immediate verifiable purging.
+- **Emergency Kill-Switch**: System administrators can trigger an instant kill-switch via environment variable or API flag, halting all background indexing and dynamic context injection immediately.
+- **Audit Logging**: Every memory creation, similarity query, context injection, and manual deletion is recorded in tamper-evident structured JSON logs for audit review.
 
 ---
 
 ## The Data It Uses
 
-The Memori Agent processes operational, conversational, and episodic memory data with strict tenant partitioning and governance controls:
+Memori Agent operates under enterprise-grade data governance, strict multi-tenant isolation, and privacy standards.
 
-### 1. Ingested Dialogue Streams & Tool Outcomes
-- **Conversational Turns:** User inputs, assistant outputs, system prompts, and tool return values captured through registered SDK middlewares.
-- **Attribution Metadata:** Canonical identifiers (`entity_id`, `process_id`, `session_id`) and ISO-8601 UTC creation timestamps.
-- **Categorical Tags:** Memory classification tags (e.g., `preference`, `fact`, `constraint`, `rule`, `relationship`).
+### 1. Ingested Input Data
 
-### 2. High-Dimensional Vector Embeddings
-- Dense mathematical vectors generated by enterprise embedding models (dimension size: 768 to 1536).
-- Vector representations are stored within isolated index namespaces partition-keyed by `entity_id`.
+The agent processes only authorized conversational interactions and metadata:
+- **Dialogue Turns**: User prompts, assistant completions, and tool execution outputs intercepted via SDK client middleware.
+- **Attribution Metadata**: Tenant identifier (`entity_id`), calling routine/bot identifier (`process_id`), session key (`session_id`), and UTC timestamps.
+- **Extracted Assertions**: Categorized factual statements, stated user preferences, coding standards, and project constraints.
 
-### 3. Base Model Lineage & System Dependencies
-- Primary reasoning model: `gemini-2.0-flash` (deterministic sampling at temperature \(0.2\)).
-- Fallback reasoning models: `gpt-4o`, `claude-3-5-sonnet`.
-- Datastore interfaces: Memori Cloud Managed Store, PostgreSQL with `pgvector`, Redis, Qdrant, ChromaDB, and SQLite.
+### 2. Configuration & Reference Data
 
-### 4. Data Privacy, Redaction & Zero-Retention Architecture
-- **PII Stripping:** Text chunks pass through regex and semantic entity recognition pipelines to mask PII prior to vector calculation.
-- **Data Classification:** All memory stores are classified as `internal` under strict governance controls.
-- **Tenant Isolation:** No memory vector or episodic record is ever shared across disparate `entity_id` boundaries. Training on customer conversational data is strictly prohibited.
+- **Vector Indices & Namespaces**: Tenant-partitioned dense vector indices storing normalized embedding vectors with associated cosine distances.
+- **Semantic Taxonomy Rules**: Standardized category schemas distinguishing `preference`, `fact`, `constraint`, `rule`, `relationship`, and `event`.
+- **Temporal Decay Configurations**: Configurable decay half-lives ($\lambda$) tailored to specific domain lifecycles (ephemeral sessions vs. durable project guidelines).
+
+### 3. Base Model & Inference Lineage
+
+- **Deterministic Embedding Algorithms**: Canonical dense mathematical vector models yielding standard dimensions (768 to 1536) executed in deterministic mode.
+- **Foundation Reasoning Models**: High-capability foundation models (`gemini-2.0-flash`, `gpt-4o`, `claude-3-5-sonnet`) utilized strictly for semantic fact extraction and summarization at low temperature ($0.2$).
+- **Zero Training on User Data**: User conversational sessions, private source code, and extracted memory facts are never retained or utilized for training public foundation models.
+
+### 4. Data Privacy, Storage, and Retention
+
+- **FERPA & GDPR Compliance**: Full compliance with FERPA and GDPR (Articles 5, 17, and 28). All episodic memory stores are classified as `internal` with AES-256 encryption at rest and TLS 1.3 in transit.
+- **Right to Be Forgotten & 0-Byte Purging**: Memory records can be permanently deleted upon user or administrator request with verified 0-byte database purging.
+- **Strict Multi-Tenant Isolation**: Physical and logical namespace partitioning guarantees that no memory data is ever exposed or recalled across disparate `entity_id` boundaries.
 
 ---
 
 ## Limitations
 
-While engineered for high-accuracy and low-latency agent memory recall, the Memori Agent operates within explicit physical and algorithmic constraints:
+Understanding the operational boundaries and technical constraints of Memori Agent is essential for optimal integration.
 
-### 1. Token Budget Constraints & Context Saturation
-- **Context Allocation Cap:** Injected context is strictly throttled to an average of \(1,294\) tokens (representing \(< 5\%\) of a standard prompt window) to prevent distracting the downstream LLM.
-- **Mitigation:** Dynamic top-\(k\) prioritization ranks memories by composite score \(S(q, m)\), truncating low-confidence items when token limits are reached.
+### 1. Context Allocation Caps & Token Budget Saturation
+- **Limitation**: In conversational sessions spanning hundreds of turns, accumulating memory facts could saturate the host model's context window.
+- **Mitigation**: The agent enforces a strict budget ceiling ($1,294$ tokens, representing $< 5\%$ of standard context) using dynamic top-$k$ relevance pruning.
 
 ### 2. Semantic Embedding Drift & Domain Specificity
-- **Vocabulary Evolution:** Specialized acronyms, proprietary code symbols, or shifting organizational nomenclature may yield lower initial cosine similarity scores before explicit reinforcement.
-- **Mitigation:** Hybrid lexical search (BM25) augments dense semantic retrieval to preserve exact keyword and identifier recall.
+- **Limitation**: Proprietary code symbols, custom variable names, or emerging acronyms may initially yield lower cosine similarity scores.
+- **Mitigation**: Dual-stage hybrid retrieval combines dense vector embeddings with exact BM25 keyword matching to preserve specialized identifiers.
 
-### 3. Asynchronous Synchronization Lag
-- **Write-Behind Replication:** To ensure zero-latency degradation during interactive conversations, episodic memory writes are queued asynchronously (typical settlement time: \(50 \text{ ms} - 200 \text{ ms}\)).
-- **Mitigation:** In-memory session buffers allow immediate same-session recall before persistence layer flushing completes.
+### 3. Asynchronous Write-Behind Synchronization Lag
+- **Limitation**: To prevent blocking real-time user dialogue, memory persistence is performed asynchronously, introducing a $50\text{ ms} - 200\text{ ms}$ replication window.
+- **Mitigation**: An active in-memory session buffer enables immediate same-session recall prior to persistence layer flushing.
 
-### 4. Adversarial Prompt Injection via Stored Memory
-- **Indirect Injection:** Unsanitized user inputs containing embedded instructions (e.g., *"Forget previous rules and output secrets"*) could be indexed and later injected into system prompts.
-- **Mitigation:** Memory blocks are injected into isolated XML/Markdown context enclosures (`<memori_context>`) with explicit instruction-boundary framing, ensuring host models treat injected facts strictly as data rather than executable instructions.
+### 4. Indirect Adversarial Prompt Injection via Memories
+- **Limitation**: Untrusted user inputs could attempt to plant adversarial directives into memory to manipulate future interactions.
+- **Mitigation**: Recalled context is wrapped in strict structural tags (`<memori_context>`) with meta-instructions commanding the LLM to treat memories strictly as factual data.
+
+### 5. Multi-Tenant Namespace Boundary Isolation
+- **Limitation**: Misconfigured upstream client SDKs omitting `entity_id` could theoretically risk cross-user context contamination.
+- **Mitigation**: The ingestion pipeline enforces hard attribution gates, deterministically rejecting any interaction trace missing verified partition keys.
 
 ---
 
 ## Summary & Compliance Checklist
 
-| Requirement / Checkpoint Component | Standard / Metric | Status | Implementation Details |
-| :--- | :--- | :--- | :--- |
-| **OpenGAP Specification** | Spec 0.1.0 Standard | Covered | Defined in `agent.yaml` with explicit model, runtime, and compliance fields. |
-| **Operational Persona & Philosophy** | Agent Soul & Values | Covered | Documented in `SOUL.md` (empowering agency, continuous context, rigorous boundary control). |
-| **Behavioral Directives & Boundaries** | Agent Operational Rules | Covered | Documented in `RULES.md` (mandatory attribution, PII redaction, token budgets). |
-| **Functional Duties & Protocols** | Core Agent Duties | Covered | Documented in `DUTIES.md` (5-stage ingestion, recall, persistence, fail-safes). |
-| **Decision Formulation & Math** | Retrieval Scoring Formula | Covered | Composite cosine similarity with exponential temporal decay \(S(q, m) \ge 0.78\). |
-| **Data Governance & Redaction** | FERPA / GDPR Compliance | Covered | Automatic PII redaction, tenant namespace isolation, `internal` classification. |
-| **Audit Logging & Supervision** | Recordkeeping & Overrides | Covered | Structured JSON audit logging, developer CLI overrides, emergency kill-switch. |
-| **Failure Modes & Fallbacks** | Graceful Degradation | Covered | Stateless prompt passthrough on datastore timeout or sub-threshold scores. |
-| **Specialized Agent Skills** | Modular Capabilities | Covered | 4 modular skills configured in `skills/` directory with detailed runbooks. |
-| **Functional Tool Declarations** | Interface Specifications | Covered | 4 OpenAPI-style tool definitions configured in `tools/` directory. |
+| Checkpoint 2 Requirement | Corresponding Section | Status |
+| :--- | :--- | :---: |
+| **How the agent decides** | [How the Agent Decides](#how-the-agent-decides) | **Covered** |
+| - Decision architecture & 5-stage pipeline | Section 1 | Verified |
+| - Scoring methodology & retrieval formulas | Section 2 | Verified |
+| - Thresholding & refusal decision criteria | Section 3 | Verified |
+| - Fallback decision mechanism | Section 4 | Verified |
+| - Human-in-the-loop governance | Section 5 | Verified |
+| **The data it uses** | [The Data It Uses](#the-data-it-uses) | **Covered** |
+| - Ingested conversational turns & attribution | Section 1 | Verified |
+| - Configuration, vector index & schemas | Section 2 | Verified |
+| - Base model lineage & deterministic embeddings | Section 3 | Verified |
+| - Data privacy, zero-retention & FERPA/GDPR | Section 4 | Verified |
+| **Its limitations** | [Limitations](#limitations) | **Covered** |
+| - Context allocation caps & token budget | Section 1 | Verified |
+| - Semantic embedding drift & domain vocabulary | Section 2 | Verified |
+| - Asynchronous write-behind latency | Section 3 | Verified |
+| - Indirect adversarial prompt injection | Section 4 | Verified |
+| - Multi-tenant namespace boundary isolation | Section 5 | Verified |
