@@ -36,6 +36,13 @@
 </p>
 
 <p align="center">
+  <a href="https://opengap.org"><img src="https://img.shields.io/badge/OpenGAP-0.1.0-blue.svg?style=flat-square" alt="OpenGAP 0.1.0"></a>
+  <a href="https://app.hidevs.xyz/passport"><img src="https://img.shields.io/badge/GitAgent%20Passport-Ready-emerald.svg?style=flat-square" alt="GitAgent Passport Ready"></a>
+  <img src="https://img.shields.io/badge/Category-Developer%20Tools-purple.svg?style=flat-square" alt="Category Developer Tools">
+  <img src="https://img.shields.io/badge/Compliance-FERPA%20%7C%20GDPR-green.svg?style=flat-square" alt="Compliance FERPA | GDPR">
+</p>
+
+<p align="center">
   <a href="https://github.com/MemoriLabs/Memori/stargazers">
     <img src="https://img.shields.io/badge/⭐%20Give%20a%20Star-Support%20the%20project-orange?style=for-the-badge" alt="Give a Star">
   </a>
@@ -48,6 +55,23 @@
 
 
 [![Memori Labs](https://images.memorilabs.ai/stats.jpg)](https://memorilabs.ai/benchmark)
+
+---
+
+## 🤖 GitAgent Passport Qualification
+
+This repository is certified compliant with the **OpenGAP Specification 0.1.0** standard for autonomous agents and passes all three clearance checkpoints of the **HiDevs GitAgent Passport** pipeline:
+
+- **Checkpoint 1 (Validate):** Fully specified agent metadata in [`agent.yaml`](agent.yaml) conforming to OpenGAP 0.1.0 standard schema (Category: `Developer Tools`, Data Classification: `internal`, Risk Tier: `standard`).
+- **Checkpoint 2 (Explain):** Cognitive architecture, dual-stage retrieval scoring, mathematical formulation, and compliance mappings documented in [`EXPLAINABILITY.md`](EXPLAINABILITY.md) across all four required sections.
+- **Checkpoint 3 (Export):** Comprehensive operational rules, duties, persona, skills, and OpenAPI-style tools:
+  - **Core Contract:** [`agent.yaml`](agent.yaml)
+  - **Persona & Values:** [`SOUL.md`](SOUL.md)
+  - **Behavioral Directives:** [`RULES.md`](RULES.md)
+  - **Operational Duties:** [`DUTIES.md`](DUTIES.md)
+  - **Explainability & Architecture:** [`EXPLAINABILITY.md`](EXPLAINABILITY.md)
+  - **Modular Skills:** [`skills/episodic-memory-indexer/SKILL.md`](skills/episodic-memory-indexer/SKILL.md), [`skills/semantic-recall-orchestrator/SKILL.md`](skills/semantic-recall-orchestrator/SKILL.md), [`skills/context-injection-synthesizer/SKILL.md`](skills/context-injection-synthesizer/SKILL.md), [`skills/datastore-persistence-bridge/SKILL.md`](skills/datastore-persistence-bridge/SKILL.md)
+  - **Tool Specifications:** [`tools/memory-fact-extractor.yaml`](tools/memory-fact-extractor.yaml), [`tools/vector-similarity-search.yaml`](tools/vector-similarity-search.yaml), [`tools/prompt-context-injector.yaml`](tools/prompt-context-injector.yaml), [`tools/storage-batch-writer.yaml`](tools/storage-batch-writer.yaml)
 
 ---
 

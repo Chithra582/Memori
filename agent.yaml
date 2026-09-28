@@ -1,0 +1,65 @@
+spec_version: "0.1.0"
+name: "memori-agent"
+version: "1.0.0"
+description: >
+  Autonomous long-term agent memory orchestration, action-grounded recall, cognitive episodic
+  indexing, and multi-datastore context synthesis agent for Memori Labs. Bridges LLM frameworks,
+  local storage engines, and cloud persistence with sub-millisecond semantic retrieval,
+  zero-data-leakage tenancy boundaries, and cross-framework memory attribution.
+author: "Chithra R"
+license: "Apache-2.0"
+
+model:
+  preferred: "gemini-2.0-flash"
+  fallback:
+    - "gpt-4o"
+    - "claude-3-5-sonnet"
+  constraints:
+    temperature: 0.2
+    max_tokens: 4096
+
+skills:
+  - episodic-memory-indexer
+  - semantic-recall-orchestrator
+  - context-injection-synthesizer
+  - datastore-persistence-bridge
+
+tools:
+  - memory-fact-extractor
+  - vector-similarity-search
+  - prompt-context-injector
+  - storage-batch-writer
+
+runtime:
+  max_turns: 10
+  temperature: 0.2
+  timeout: 120
+
+compliance:
+  risk_tier: standard
+  frameworks:
+    - ferpa
+    - gdpr
+  data_governance:
+    pii_handling: redact
+    data_classification: internal
+  recordkeeping:
+    audit_logging: true
+    log_format: structured_json
+  supervision:
+    human_in_the_loop: conditional
+    override_capability: true
+    kill_switch: true
+
+tags:
+  - agent-memory
+  - llm
+  - vector-database
+  - rag
+  - embeddings
+  - developer-tools
+  - ai-agents
+
+metadata:
+  domain: "agent-memory"
+  category: "Developer Tools"

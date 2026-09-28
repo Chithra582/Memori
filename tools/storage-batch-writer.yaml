@@ -1,0 +1,41 @@
+name: storage-batch-writer
+description: Asynchronously persists validated episodic memories and vector embeddings into cloud or BYODB datastores with idempotency checks.
+version: 1.0.0
+parameters:
+  type: object
+  properties:
+    entity_id:
+      type: string
+      description: Tenant identifier partition key.
+    records:
+      type: array
+      items:
+        type: object
+        properties:
+          fact:
+            type: string
+          category:
+            type: string
+          embedding:
+            type: array
+            items:
+              type: number
+          metadata:
+            type: object
+      description: Batch of memory items to commit.
+    idempotency_key:
+      type: string
+      description: Unique transaction key to prevent duplicate writes during network retries.
+  required:
+    - entity_id
+    - records
+returns:
+  type: object
+  properties:
+    persisted_count:
+      type: integer
+    status:
+      type: string
+      enum: [committed, queued, failed]
+    timestamp:
+      type: string
